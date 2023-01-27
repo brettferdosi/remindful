@@ -9,14 +9,14 @@ import Cocoa
 import SwiftUI
 import Carbon.HIToolbox
 
-//let REMINDER_LENGTH_SECONDS : Double = 5
-//let REMINDER_INTERVAL_SECONDS : Double = 5
+// let REMINDER_LENGTH_SECONDS : Double = 5
+// let REMINDER_INTERVAL_SECONDS : Double = 5
 
 let REMINDER_LENGTH_SECONDS : Double = 30
 let REMINDER_INTERVAL_SECONDS : Double = 60 * 30
 
 class KeyPanel : NSPanel {
-    
+
     public override var acceptsFirstResponder: Bool {
         get { return true }
     }
@@ -26,9 +26,9 @@ class KeyPanel : NSPanel {
     public override var canBecomeMain: Bool {
         get { return true }
     }
-    
+
     public var escKeyCallback: (() -> Void)? = nil
-    
+
     public override func keyDown(with event: NSEvent) {
         if Int(event.keyCode) == kVK_Escape {
             if (escKeyCallback != nil) {
@@ -52,36 +52,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     var statusItem: NSStatusItem!
     var statusMenu: NSMenu!
+    var menuButton: NSStatusBarButton!
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         statusMenu = NSMenu()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
-        guard let menuButton = statusItem.button else {
+        if (statusItem.button == nil) {
             print("couldn't get status item button")
             NSApp.terminate(self)
-            return
         }
-
-        menuButton.image = NSImage.init(systemSymbolName: "pencil", accessibilityDescription: nil ) // TODO fix
+        menuButton = statusItem.button
         menuButton.action = #selector(statusBarButtonClick(_:))
         menuButton.sendAction(on: [.leftMouseUp, .rightMouseUp])
 
         statusMenu.addItem(NSMenuItem(title: "About", action: #selector(showAboutPanel(_:)), keyEquivalent: ""))
         statusMenu.addItem(NSMenuItem.separator())
         statusMenu.addItem(NSMenuItem(title: "Quit", action: #selector(quit(_:)), keyEquivalent: ""))
-        
+
         reminderWindow = KeyPanel(contentRect: NSRect(x: 0, y: 0, width: NSScreen.main!.frame.width, height: NSScreen.main!.frame.height), styleMask: [.borderless, .nonactivatingPanel],backing: .buffered, defer: false)
         reminderWindow.level = .mainMenu
         reminderWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         reminderWindow.escKeyCallback = hideReminder
-        
+
         let textView = NSTextView()
         textView.textStorage?.append(NSAttributedString("take a break"))
         reminderWindow.contentView? = NSHostingView(rootView: PanelView())
-        
+
         print("inited \(Date())")
-        scheduleShowReminder()
+        // TODO make a toggle able feature
+        NSWorkspace.shared.notificationCenter.addObserver(
+                self, selector: #selector(wakeFromSleep(note:)),
+                name: NSWorkspace.didWakeNotification, object: nil)
+        enableReminders()
     }
 
     func applicationWillTerminate(_ aNotification: Notification) {
@@ -90,7 +93,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
         return true
     }
-    
+
     func scheduleShowReminder() {
         if (reminderTimer != nil) {
             reminderTimer!.invalidate()
@@ -101,7 +104,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                                              userInfo: nil,
                                              repeats: false)
     }
-    
+
     func scheduleHideReminder() {
         if (reminderTimer != nil) {
             reminderTimer!.invalidate()
@@ -112,12 +115,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                                              userInfo: nil,
                                              repeats: false)
     }
-    
+
     @objc func showReminder() {
-        print("Reminder triggered \(Date())")
+        print("showReminder \(Date())")
 
         reminderWindow.alphaValue = 0
-        //reminderWindow.orderFrontRegardless()
         reminderWindow.makeKeyAndOrderFront(nil)
         NSAnimationContext.runAnimationGroup({ (context) -> Void in
             context.duration = 1
@@ -125,12 +127,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }, completionHandler: nil)
         scheduleHideReminder()
     }
-    
+
     @objc func hideReminder() {
-        print("Reminder ended \(Date())")
-    
-        reminderWindow.alphaValue = 1
-        //reminderWindow.orderFrontRegardless()
+        print("hideReminder \(Date())")
+
         reminderWindow.makeKeyAndOrderFront(nil)
         NSAnimationContext.runAnimationGroup({ (context) -> Void in
             context.duration = 1
@@ -141,19 +141,43 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         scheduleShowReminder()
     }
 
+    @objc func enableReminders() {
+        print("enableRemindrs \(Date())")
+        menuButton.image = NSImage.init(systemSymbolName: "ellipsis.circle.fill", accessibilityDescription: nil ) // TODO fix
+        scheduleShowReminder()
+    }
+
+    @objc func disableReminders() {
+        print("disableReminders \(Date())")
+        menuButton.image = NSImage.init(systemSymbolName: "ellipsis.circle", accessibilityDescription: nil ) // TODO fix
+        hideReminder()
+        reminderTimer!.invalidate()
+        reminderTimer = nil
+    }
+
+    @objc func toggleReminders() {
+        print("toggleReminders \(Date())")
+        reminderTimer == nil ? enableReminders() : disableReminders()
+    }
+
     @objc func statusBarButtonClick(_ sender: Any) {
         let event = NSApp.currentEvent!
         if event.type == NSEvent.EventType.leftMouseUp {
-            print("status bar button left-clicked")
+            toggleReminders()
         } else if event.type == NSEvent.EventType.rightMouseUp {
             statusItem.popUpMenu(statusMenu)
         }
     }
-    
+
+    @objc func wakeFromSleep(note: NSNotification) {
+        print("wakeFromSleep \(Date())")
+        enableReminders()
+    }
+
     @objc func quit(_ sender: Any) {
         NSApp.terminate(self)
     }
-    
+
     // TODO fix
     @objc func showAboutPanel(_ sender: Any) {
         let github = NSMutableAttributedString(string: "https://github.com/brettferdosi/remindful")
@@ -177,7 +201,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
         NSApp.orderFrontStandardAboutPanel(options: [ .credits : credits ])
     }
-    
 
 }
 
