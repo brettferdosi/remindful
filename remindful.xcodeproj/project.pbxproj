@@ -18,7 +18,6 @@
 		8B2A642C297708390067EC3C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8B2A642F297708390067EC3C /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		8B2A6431297708390067EC3C /* remindful.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = remindful.entitlements; sourceTree = "<group>"; };
-		8B2A6437297708F10067EC3C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -51,7 +50,6 @@
 		8B2A6429297708380067EC3C /* remindful */ = {
 			isa = PBXGroup;
 			children = (
-				8B2A6437297708F10067EC3C /* Info.plist */,
 				8B2A642A297708380067EC3C /* AppDelegate.swift */,
 				8B2A642C297708390067EC3C /* Assets.xcassets */,
 				8B2A642E297708390067EC3C /* MainMenu.xib */,
@@ -271,10 +269,10 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = remindful/Info.plist;
+				INFOPLIST_FILE = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2022 Brett Gutstein. All rights reserved.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2023 Brett Gutstein. All rights reserved.";
 				INFOPLIST_KEY_NSMainNibFile = MainMenu;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -299,10 +297,10 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = remindful/Info.plist;
+				INFOPLIST_FILE = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2022 Brett Gutstein. All rights reserved.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2023 Brett Gutstein. All rights reserved.";
 				INFOPLIST_KEY_NSMainNibFile = MainMenu;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = (
