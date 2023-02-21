@@ -9,7 +9,7 @@ import Cocoa
 import SwiftUI
 import Carbon.HIToolbox
 
-let REMINDER_INTERVAL_SECONDS : Double = 30 * 60
+let REMINDER_INTERVAL_SECONDS = 30 * 60 // TODO user configurable
 
 class KeyPanel : NSPanel {
     public override var acceptsFirstResponder: Bool {
@@ -52,6 +52,7 @@ struct RepresentableFirstMouseNSView : NSViewRepresentable {
     typealias NSViewType = FirstMouseNSView
 }
 
+// TODO record and display number of reminders overall and for the session (allow reset for overall)
 struct PanelView: View {
     var body: some View {
         Text("take a break\n\npress esc or click anywhere to exit").frame(maxWidth: .infinity, maxHeight: .infinity).multilineTextAlignment(.center).overlay(RepresentableFirstMouseNSView())
@@ -62,61 +63,52 @@ struct PanelView: View {
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     // state
-
     var reminderWindow: KeyPanel!
-    var reminderTimer: Timer? // nil when reminders disabled, valid when reminder scheduled, invalid after reminder fires
-
     var statusItem: NSStatusItem! // space in sattus bar
     var statusMenu: NSMenu! // dropdown menu
     var menuButton: NSStatusBarButton! // button in space in status bar
+    var countdownMenuItem: NSMenuItem! // menu item that shows countdown
+
+    var secondsTimer: Timer!
+    var secondsUntilReminder = -1 // -1 when disabled, 0 when reminder shown, positive when counting down
+    var savedSecondsUntilReminder = -1 // to stop countdowns while the machine is sleeping
 
 
     // helpers
 
     func areRemindersEnabled() -> Bool {
-        return reminderTimer != nil
+        return secondsUntilReminder != -1
     }
 
-    func hasReminderBeenShown() -> Bool {
-        return reminderTimer != nil && !reminderTimer!.isValid
+    func isReminderShowing() -> Bool {
+        return secondsUntilReminder == 0
     }
 
     func scheduleShowReminder() {
-        if (reminderTimer != nil) {
-            reminderTimer!.invalidate()
-        }
-        reminderTimer = Timer.scheduledTimer(timeInterval: REMINDER_INTERVAL_SECONDS,
-                                             target: self,
-                                             selector: #selector(showReminder),
-                                             userInfo: nil,
-                                             repeats: false)
+        secondsUntilReminder = REMINDER_INTERVAL_SECONDS
     }
 
     @objc func showReminder() {
         print("showReminder \(Date())")
 
-        if (!hasReminderBeenShown()) {
-            reminderWindow.alphaValue = 0
-            reminderWindow.makeKeyAndOrderFront(nil)
-            NSAnimationContext.runAnimationGroup({ (context) -> Void in
-                context.duration = 0.99
-                reminderWindow.animator().alphaValue = 1
-            }, completionHandler: nil)
-        }
+        reminderWindow.alphaValue = 0
+        reminderWindow.makeKeyAndOrderFront(nil)
+        NSAnimationContext.runAnimationGroup({ (context) -> Void in
+            context.duration = 0.99
+            reminderWindow.animator().alphaValue = 1
+        }, completionHandler: nil)
     }
 
     @objc func hideReminder() {
         print("hideReminder \(Date())")
 
-        if (hasReminderBeenShown()) {
-            reminderWindow.makeKeyAndOrderFront(nil) // needed for this to work correctly for some reason
-            NSAnimationContext.runAnimationGroup({ (context) -> Void in
-                context.duration = 0.99
-                reminderWindow.animator().alphaValue = 0
-            }, completionHandler: {
-                self.reminderWindow.close()
-            })
-        }
+        reminderWindow.makeKeyAndOrderFront(nil) // needed for this to work correctly for some reason
+        NSAnimationContext.runAnimationGroup({ (context) -> Void in
+            context.duration = 0.99
+            reminderWindow.animator().alphaValue = 0
+        }, completionHandler: {
+            self.reminderWindow.close()
+        })
     }
 
     @objc func enableReminders() {
@@ -128,12 +120,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func disableReminders() {
         print("disableReminders \(Date())")
 
-        hideReminder()
-        if (reminderTimer != nil) {
-            reminderTimer!.invalidate()
-            reminderTimer = nil
+        if (isReminderShowing()) {
+            hideReminder()
         }
+        secondsUntilReminder = -1
 
+        countdownMenuItem.title = "Reminders disabled"
         menuButton.image = NSImage.init(systemSymbolName: "ellipsis.circle", accessibilityDescription: nil ) // TODO fix
     }
 
@@ -144,6 +136,52 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // event handling
 
+    @objc func secondsTick() {
+        if (secondsUntilReminder > 0) {
+            secondsUntilReminder -= 1
+            countdownMenuItem.title = "Reminder in " + String(secondsUntilReminder) // TODO DD:HH:MM
+            if (secondsUntilReminder == 0) {
+                showReminder()
+            }
+        }
+    }
+
+    @objc func wakeFromSleep(note: NSNotification) {
+        print("wakeFromSleep \(Date())")
+
+        secondsUntilReminder = savedSecondsUntilReminder
+
+        if (isReminderShowing()) {
+            hideReminder()
+        }
+
+        if (areRemindersEnabled()) {
+            if (true) { // TODO if ResetOnWake setting true
+                scheduleShowReminder()
+            }
+        } else {
+            if (true) { // TODO if EnableOnWake setting true
+                enableReminders()
+            }
+        }
+    }
+
+    @objc func goToSleep(note: NSNotification) {
+        print("goToSleep \(Date())")
+
+        savedSecondsUntilReminder = secondsUntilReminder
+        secondsUntilReminder = -1
+    }
+
+    @objc func userClosedReminder() {
+        print("userClosedReminder \(Date())")
+
+        hideReminder()
+        scheduleShowReminder()
+    }
+
+    // UI
+
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         statusMenu = NSMenu()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -152,6 +190,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menuButton.action = #selector(statusBarButtonClick(_:))
         menuButton.sendAction(on: [.leftMouseUp, .rightMouseUp])
 
+        countdownMenuItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        statusMenu.addItem(countdownMenuItem)
+        statusMenu.addItem(NSMenuItem.separator())
         statusMenu.addItem(NSMenuItem(title: "About", action: #selector(showAboutPanel(_:)), keyEquivalent: ""))
         statusMenu.addItem(NSMenuItem.separator())
         statusMenu.addItem(NSMenuItem(title: "Quit", action: #selector(quit(_:)), keyEquivalent: ""))
@@ -165,10 +206,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         })
 
         print("inited \(Date())")
-        // TODO make a toggleable feature
+
+        // TODO doesn't tick while the menu is open
+        secondsTimer = Timer.scheduledTimer(timeInterval: 1,
+                                            target: self,
+                                            selector: #selector(secondsTick),
+                                            userInfo: nil,
+                                            repeats: true)
+
         NSWorkspace.shared.notificationCenter.addObserver(
                 self, selector: #selector(wakeFromSleep(note:)),
                 name: NSWorkspace.didWakeNotification, object: nil)
+        NSWorkspace.shared.notificationCenter.addObserver(
+                self, selector: #selector(goToSleep(note:)),
+                name: NSWorkspace.willSleepNotification, object: nil)
+
         enableReminders()
     }
 
@@ -186,18 +238,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else if event.type == NSEvent.EventType.rightMouseUp {
             statusItem.popUpMenu(statusMenu)
         }
-    }
-
-    @objc func wakeFromSleep(note: NSNotification) {
-        print("wakeFromSleep \(Date())")
-        if (!areRemindersEnabled()) {
-            enableReminders()
-        }
-    }
-
-    @objc func userClosedReminder() {
-        hideReminder()
-        scheduleShowReminder()
     }
 
     @objc func quit(_ sender: Any) {
