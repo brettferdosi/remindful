@@ -22,13 +22,11 @@ class KeyPanel : NSPanel {
         get { return true }
     }
 
-    public var escKeyCallback: (() -> Void)? = nil
+    public var keyPressCallback: (() -> Void)? = nil
 
     public override func keyDown(with event: NSEvent) {
-        if Int(event.keyCode) == kVK_Escape {
-            if (escKeyCallback != nil) {
-                escKeyCallback!()
-            }
+        if (keyPressCallback != nil) {
+            keyPressCallback!()
         }
     }
 }
@@ -55,7 +53,7 @@ struct RepresentableFirstMouseNSView : NSViewRepresentable {
 // TODO record and display number of reminders overall and for the session (allow reset for overall)
 struct PanelView: View {
     var body: some View {
-        Text("take a break\n\npress esc or click anywhere to exit").frame(maxWidth: .infinity, maxHeight: .infinity).multilineTextAlignment(.center).overlay(RepresentableFirstMouseNSView())
+        Text("take a break\n\npress any key or click to exit").frame(maxWidth: .infinity, maxHeight: .infinity).multilineTextAlignment(.center).overlay(RepresentableFirstMouseNSView())
     }
 }
 
@@ -72,6 +70,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var secondsTimer: Timer!
     var secondsUntilReminder = -1 // -1 when disabled, 0 when reminder shown, positive when counting down
     var savedSecondsUntilReminder = -1 // to stop countdowns while the machine is sleeping
+    var canUserCloseReminder = false // flag to delay reminder close until after it fades in
 
 
     // helpers
@@ -96,7 +95,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSAnimationContext.runAnimationGroup({ (context) -> Void in
             context.duration = 0.99
             reminderWindow.animator().alphaValue = 1
-        }, completionHandler: nil)
+        }, completionHandler: {
+            self.canUserCloseReminder = true
+        })
     }
 
     @objc func hideReminder() {
@@ -176,8 +177,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func userClosedReminder() {
         print("userClosedReminder \(Date())")
 
-        hideReminder()
-        scheduleShowReminder()
+        if (canUserCloseReminder) {
+            canUserCloseReminder = false
+            hideReminder()
+            scheduleShowReminder()
+        }
     }
 
     // UI
@@ -200,7 +204,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         reminderWindow = KeyPanel(contentRect: NSRect(x: 0, y: 0, width: NSScreen.main!.frame.width, height: NSScreen.main!.frame.height), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         reminderWindow.level = .mainMenu
         reminderWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        reminderWindow.escKeyCallback = userClosedReminder
+        reminderWindow.keyPressCallback = userClosedReminder
         reminderWindow.contentView? = NSHostingView(rootView: PanelView().contentShape(Rectangle()).onTapGesture {
             self.userClosedReminder()
         })
