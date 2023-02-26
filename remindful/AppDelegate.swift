@@ -9,8 +9,6 @@ import Cocoa
 import SwiftUI
 import Carbon.HIToolbox
 
-let REMINDER_INTERVAL_SECONDS = 30 * 60 // TODO user configurable
-
 class KeyPanel : NSPanel {
     public override var acceptsFirstResponder: Bool {
         get { return true }
@@ -50,10 +48,17 @@ struct RepresentableFirstMouseNSView : NSViewRepresentable {
     typealias NSViewType = FirstMouseNSView
 }
 
-// TODO record and display number of reminders overall and for the session (allow reset for overall)
+class PanelViewState: ObservableObject {
+    @Published var reminderMessage = "remindful"
+    @Published var remindersSinceReset = 0 // TODO implement reset
+    @Published var remindersSinceSleep = 0
+}
+
 struct PanelView: View {
+    @ObservedObject var state: PanelViewState
+
     var body: some View {
-        Text("take a break\n\npress any key or click to exit").frame(maxWidth: .infinity, maxHeight: .infinity).multilineTextAlignment(.center).overlay(RepresentableFirstMouseNSView())
+        Text("\(state.reminderMessage)\n\n\(state.remindersSinceSleep) reminders since last sleep\n\(state.remindersSinceReset) reminders since last reset\n\npress any key or click to exit").frame(maxWidth: .infinity, maxHeight: .infinity).multilineTextAlignment(.center).overlay(RepresentableFirstMouseNSView())
     }
 }
 
@@ -61,17 +66,18 @@ struct PanelView: View {
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     // state
-    var reminderWindow: KeyPanel!
+    var reminderWindow: KeyPanel! // window for reminder
     var statusItem: NSStatusItem! // space in sattus bar
     var statusMenu: NSMenu! // dropdown menu
     var menuButton: NSStatusBarButton! // button in space in status bar
     var countdownMenuItem: NSMenuItem! // menu item that shows countdown
 
+    var reminderPanelViewState = PanelViewState() // state that will be displayed on reminder panel
+    var reminderIntervalSeconds = 30 * 60 // length of interval between reminders in seconds
     var secondsTimer: Timer!
     var secondsUntilReminder = -1 // -1 when disabled, 0 when reminder shown, positive when counting down
     var savedSecondsUntilReminder = -1 // to stop countdowns while the machine is sleeping
     var canUserCloseReminder = false // flag to delay reminder close until after it fades in
-
 
     // helpers
 
@@ -84,11 +90,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func scheduleShowReminder() {
-        secondsUntilReminder = REMINDER_INTERVAL_SECONDS
+        secondsUntilReminder = reminderIntervalSeconds
     }
 
     @objc func showReminder() {
         print("showReminder \(Date())")
+
+        reminderPanelViewState.remindersSinceReset += 1
+        reminderPanelViewState.remindersSinceSleep += 1
 
         reminderWindow.alphaValue = 0
         reminderWindow.makeKeyAndOrderFront(nil)
@@ -156,6 +165,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             hideReminder()
         }
 
+        reminderPanelViewState.remindersSinceSleep = 0
+
         if (areRemindersEnabled()) {
             if (true) { // TODO if ResetOnWake setting true
                 scheduleShowReminder()
@@ -205,7 +216,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         reminderWindow.level = .mainMenu
         reminderWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         reminderWindow.keyPressCallback = userClosedReminder
-        reminderWindow.contentView? = NSHostingView(rootView: PanelView().contentShape(Rectangle()).onTapGesture {
+        reminderWindow.contentView? = NSHostingView(rootView: PanelView(state: reminderPanelViewState).contentShape(Rectangle()).onTapGesture {
             self.userClosedReminder()
         })
 
