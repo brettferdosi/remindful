@@ -225,12 +225,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         print("inited \(Date())")
 
-        // TODO doesn't tick while the menu is open
         secondsTimer = Timer.scheduledTimer(timeInterval: 1,
                                             target: self,
                                             selector: #selector(secondsTick),
                                             userInfo: nil,
                                             repeats: true)
+        RunLoop.current.add(secondsTimer, forMode: RunLoop.Mode.common)
 
         NSWorkspace.shared.notificationCenter.addObserver(
                 self, selector: #selector(wakeFromSleep(note:)),
