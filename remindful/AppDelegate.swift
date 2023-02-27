@@ -49,9 +49,9 @@ struct RepresentableFirstMouseNSView : NSViewRepresentable {
 }
 
 class PanelViewState: ObservableObject {
-    @Published var reminderMessage = "remindful"
-    @Published var remindersSinceReset = 0 // TODO implement reset
-    @Published var remindersSinceSleep = 0
+    @AppStorage("reminderMessage") var reminderMessage: String = "remindful"
+    @AppStorage("remindersSinceReset") var remindersSinceReset: Int = 0 // TODO implement reset
+    @AppStorage("remindersSinceSleep") var remindersSinceSleep: Int = 0
 }
 
 struct PanelView: View {
@@ -73,7 +73,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var countdownMenuItem: NSMenuItem! // menu item that shows countdown
 
     var reminderPanelViewState = PanelViewState() // state that will be displayed on reminder panel
-    var reminderIntervalSeconds = 30 * 60 // length of interval between reminders in seconds
+    @AppStorage("reminderIntervalSeconds") var reminderIntervalSeconds: Int = 30 * 60 // length of interval between reminders in seconds
     var secondsTimer: Timer!
     var secondsUntilReminder = -1 // -1 when disabled, 0 when reminder shown, positive when counting down
     var savedSecondsUntilReminder = -1 // to stop countdowns while the machine is sleeping
