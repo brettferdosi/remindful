@@ -71,6 +71,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var statusMenu: NSMenu! // dropdown menu
     var menuButton: NSStatusBarButton! // button in space in status bar
     var countdownMenuItem: NSMenuItem! // menu item that shows countdown
+    var hmsFormatter = DateComponentsFormatter() // format integer seconds to hh:mm:ss
 
     var reminderPanelViewState = PanelViewState() // state that will be displayed on reminder panel
     @AppStorage("reminderIntervalSeconds") var reminderIntervalSeconds: Int = 30 * 60 // length of interval between reminders in seconds
@@ -149,7 +150,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func secondsTick() {
         if (secondsUntilReminder > 0) {
             secondsUntilReminder -= 1
-            countdownMenuItem.title = "Reminder in " + String(secondsUntilReminder) // TODO DD:HH:MM
+            countdownMenuItem.title = "Reminder in " + hmsFormatter.string(from: TimeInterval(secondsUntilReminder))!
             if (secondsUntilReminder == 0) {
                 showReminder()
             }
@@ -219,6 +220,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         reminderWindow.contentView? = NSHostingView(rootView: PanelView(state: reminderPanelViewState).contentShape(Rectangle()).onTapGesture {
             self.userClosedReminder()
         })
+
+        hmsFormatter.allowedUnits = [.hour, .minute, .second]
 
         print("inited \(Date())")
 
