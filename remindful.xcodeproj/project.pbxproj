@@ -10,6 +10,7 @@
 		8B2A642B297708380067EC3C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B2A642A297708380067EC3C /* AppDelegate.swift */; };
 		8B2A642D297708390067EC3C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8B2A642C297708390067EC3C /* Assets.xcassets */; };
 		8B2A6430297708390067EC3C /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 8B2A642E297708390067EC3C /* MainMenu.xib */; };
+		8BB3276629ACE2020045BC29 /* ReminderUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BB3276529ACE2020045BC29 /* ReminderUI.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,6 +19,7 @@
 		8B2A642C297708390067EC3C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8B2A642F297708390067EC3C /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		8B2A6431297708390067EC3C /* remindful.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = remindful.entitlements; sourceTree = "<group>"; };
+		8BB3276529ACE2020045BC29 /* ReminderUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderUI.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -50,6 +52,7 @@
 		8B2A6429297708380067EC3C /* remindful */ = {
 			isa = PBXGroup;
 			children = (
+				8BB3276529ACE2020045BC29 /* ReminderUI.swift */,
 				8B2A642A297708380067EC3C /* AppDelegate.swift */,
 				8B2A642C297708390067EC3C /* Assets.xcassets */,
 				8B2A642E297708390067EC3C /* MainMenu.xib */,
@@ -129,6 +132,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8B2A642B297708380067EC3C /* AppDelegate.swift in Sources */,
+				8BB3276629ACE2020045BC29 /* ReminderUI.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

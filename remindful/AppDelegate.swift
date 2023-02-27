@@ -9,72 +9,31 @@ import Cocoa
 import SwiftUI
 import Carbon.HIToolbox
 
-class KeyPanel : NSPanel {
-    public override var acceptsFirstResponder: Bool {
-        get { return true }
-    }
-    public override var canBecomeKey: Bool {
-        get { return true }
-    }
-    public override var canBecomeMain: Bool {
-        get { return true }
-    }
-
-    public var keyPressCallback: (() -> Void)? = nil
-
-    public override func keyDown(with event: NSEvent) {
-        if (keyPressCallback != nil) {
-            keyPressCallback!()
-        }
-    }
-}
-
-// needed so click even when the panel is non-key will trigger an event
-class FirstMouseNSView : NSView {
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
-        return true
-    }
-}
-
-struct RepresentableFirstMouseNSView : NSViewRepresentable {
-    func makeNSView(context: NSViewRepresentableContext<RepresentableFirstMouseNSView>) -> FirstMouseNSView {
-        return FirstMouseNSView()
-    }
-
-    func updateNSView(_ nsView: FirstMouseNSView, context: NSViewRepresentableContext<RepresentableFirstMouseNSView>) {
-        nsView.setNeedsDisplay(nsView.bounds)
-    }
-
-    typealias NSViewType = FirstMouseNSView
-}
-
-class PanelViewState: ObservableObject {
+class UIVisisbleState: ObservableObject {
     @AppStorage("reminderMessage") var reminderMessage: String = "remindful"
     @AppStorage("remindersSinceReset") var remindersSinceReset: Int = 0 // TODO implement reset
     @AppStorage("remindersSinceSleep") var remindersSinceSleep: Int = 0
-}
-
-struct PanelView: View {
-    @ObservedObject var state: PanelViewState
-
-    var body: some View {
-        Text("\(state.reminderMessage)\n\n\(state.remindersSinceSleep) reminders since last sleep\n\(state.remindersSinceReset) reminders since last reset\n\npress any key or click to exit").frame(maxWidth: .infinity, maxHeight: .infinity).multilineTextAlignment(.center).overlay(RepresentableFirstMouseNSView())
-    }
+    @AppStorage("reminderIntervalSeconds") var reminderIntervalSeconds: Int = 30 * 60 // length of interval between reminders in seconds
 }
 
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     // state
-    var reminderWindow: KeyPanel! // window for reminder
+
+    var reminderWindow: ReminderPanel! // window for reminder
     var statusItem: NSStatusItem! // space in sattus bar
     var statusMenu: NSMenu! // dropdown menu
     var menuButton: NSStatusBarButton! // button in space in status bar
     var countdownMenuItem: NSMenuItem! // menu item that shows countdown
-    var hmsFormatter = DateComponentsFormatter() // format integer seconds to hh:mm:ss
+    let hmsFormatter = { // format integer seconds to hh:mm:ss
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = [.hour, .minute, .second]
+        return formatter
+    }()
 
-    var reminderPanelViewState = PanelViewState() // state that will be displayed on reminder panel
-    @AppStorage("reminderIntervalSeconds") var reminderIntervalSeconds: Int = 30 * 60 // length of interval between reminders in seconds
+    let uiVisibleState = UIVisisbleState() // state accessible by user interface
+
     var secondsTimer: Timer!
     var secondsUntilReminder = -1 // -1 when disabled, 0 when reminder shown, positive when counting down
     var savedSecondsUntilReminder = -1 // to stop countdowns while the machine is sleeping
@@ -91,21 +50,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func scheduleShowReminder() {
-        secondsUntilReminder = reminderIntervalSeconds
+        secondsUntilReminder = uiVisibleState.reminderIntervalSeconds
     }
 
     @objc func showReminder() {
         print("showReminder \(Date())")
 
-        reminderPanelViewState.remindersSinceReset += 1
-        reminderPanelViewState.remindersSinceSleep += 1
+        uiVisibleState.remindersSinceReset += 1
+        uiVisibleState.remindersSinceSleep += 1
 
-        reminderWindow.alphaValue = 0
-        reminderWindow.makeKeyAndOrderFront(nil)
-        NSAnimationContext.runAnimationGroup({ (context) -> Void in
-            context.duration = 0.99
-            reminderWindow.animator().alphaValue = 1
-        }, completionHandler: {
+        reminderWindow.displayReminder(callback: {
             self.canUserCloseReminder = true
         })
     }
@@ -113,13 +67,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func hideReminder() {
         print("hideReminder \(Date())")
 
-        reminderWindow.makeKeyAndOrderFront(nil) // needed for this to work correctly for some reason
-        NSAnimationContext.runAnimationGroup({ (context) -> Void in
-            context.duration = 0.99
-            reminderWindow.animator().alphaValue = 0
-        }, completionHandler: {
-            self.reminderWindow.close()
-        })
+        reminderWindow.closeReminder()
     }
 
     @objc func enableReminders() {
@@ -166,7 +114,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             hideReminder()
         }
 
-        reminderPanelViewState.remindersSinceSleep = 0
+        uiVisibleState.remindersSinceSleep = 0
 
         if (areRemindersEnabled()) {
             if (true) { // TODO if ResetOnWake setting true
@@ -196,7 +144,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // UI
+    // menu bar UI
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         statusMenu = NSMenu()
@@ -213,18 +161,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusMenu.addItem(NSMenuItem.separator())
         statusMenu.addItem(NSMenuItem(title: "Quit", action: #selector(quit(_:)), keyEquivalent: ""))
 
-        reminderWindow = KeyPanel(contentRect: NSRect(x: 0, y: 0, width: NSScreen.main!.frame.width, height: NSScreen.main!.frame.height), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        reminderWindow.level = .mainMenu
-        reminderWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        reminderWindow.keyPressCallback = userClosedReminder
-        reminderWindow.contentView? = NSHostingView(rootView: PanelView(state: reminderPanelViewState).contentShape(Rectangle()).onTapGesture {
-            self.userClosedReminder()
-        })
-
-        hmsFormatter.allowedUnits = [.hour, .minute, .second]
+        reminderWindow = ReminderPanel(state: uiVisibleState, callback: userClosedReminder)
 
         print("inited \(Date())")
 
+        // TODO may be nice to invalidate the timer when reminders are disabled or machine is asleep
         secondsTimer = Timer.scheduledTimer(timeInterval: 1,
                                             target: self,
                                             selector: #selector(secondsTick),
@@ -262,7 +203,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.terminate(self)
     }
 
-    // TODO fix
+    // TODO fix logo
     @objc func showAboutPanel(_ sender: Any) {
         let github = NSMutableAttributedString(string: "https://github.com/brettferdosi/remindful")
         github.addAttribute(.link, value: "https://github.com/brettferdosi/remindful",
