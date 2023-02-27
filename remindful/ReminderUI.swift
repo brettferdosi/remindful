@@ -35,7 +35,7 @@ class ReminderPanel: NSPanel, NSWindowDelegate {
                    defer: false) // create window device immediately
         level = .mainMenu // display on top of other windows
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary] // show in all spaces and over fullscreen apps
-        backgroundColor = NSColor(red: 0, green: 0, blue: 0, alpha: 0.75) // transluscent
+        backgroundColor = backgroundColor.withAlphaComponent(0.75) // translucent
         contentView? = NSHostingView(rootView: ReminderPanelView(state: state).contentShape(Rectangle())) // contentShape needed to make clicking work everywhere
 
         delegate = self
