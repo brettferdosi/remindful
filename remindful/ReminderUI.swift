@@ -7,15 +7,6 @@
 
 import SwiftUI
 
-// SwiftUI to render text
-struct ReminderPanelView: View {
-    @ObservedObject var state: UIVisisbleState
-
-    var body: some View {
-        Text("\(state.reminderMessage)\n\n\(state.remindersSinceSleep) reminders since last sleep\n\(state.remindersSinceReset) reminders since last reset\n\npress any key or click to exit").font(.system(.largeTitle, design: .monospaced)).multilineTextAlignment(.center).frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
 // reminder panel that will go over every other window and remain the key window while it is open;
 // calls the passed-in callback on mouse click or any keypress
 class ReminderPanel: NSPanel, NSWindowDelegate {
@@ -35,10 +26,19 @@ class ReminderPanel: NSPanel, NSWindowDelegate {
                    defer: false) // create window device immediately
         level = .mainMenu // display on top of other windows
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary] // show in all spaces and over fullscreen apps
-        backgroundColor = backgroundColor.withAlphaComponent(0.75) // translucent
+        backgroundColor = NSColor(red: 0, green: 0, blue: 0, alpha: 0.85) // translucent
         contentView? = NSHostingView(rootView: ReminderPanelView(state: state).contentShape(Rectangle())) // contentShape needed to make clicking work everywhere
 
         delegate = self
+    }
+
+    // SwiftUI to render text
+    struct ReminderPanelView: View {
+        @ObservedObject var state: UIVisisbleState
+
+        var body: some View {
+            Text("\(state.reminderMessage)\n\n\(state.remindersSinceSleep) reminders since last sleep\n\(state.remindersSinceReset) reminders since last reset\n\npress any key or click to exit").font(.system(.largeTitle, design: .monospaced)).foregroundColor(.white).multilineTextAlignment(.center).frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
     }
 
     // panels can't be these things by default, need to override them
