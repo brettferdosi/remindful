@@ -11,9 +11,13 @@ import Carbon.HIToolbox
 
 class UIVisisbleState: ObservableObject {
     @AppStorage("reminderMessage") var reminderMessage: String = "remindful"
-    @AppStorage("remindersSinceReset") var remindersSinceReset: Int = 0 // TODO implement reset
-    @AppStorage("remindersSinceSleep") var remindersSinceSleep: Int = 0
+    @AppStorage("remindersSinceReset") var remindersSinceReset: Int = 0 // total number of reminders
+    @AppStorage("remindersSinceSleep") var remindersSinceSleep: Int = 0 // number of reminders since machine last slept
     @AppStorage("reminderIntervalSeconds") var reminderIntervalSeconds: Int = 30 * 60 // length of interval between reminders in seconds
+    @AppStorage("enableRemindersOnWake") var enableRemindersOnWake: Bool = true // if reminders are disabled on wake, enable them
+    @AppStorage("resetTimerOnWake") var resetTimerOnWake: Bool = true // if reminders are enabled on wake, reset the timer
+
+    @Published var userInputtedReminderIntervalSeconds: Int = 0 // for user setting of interval
 }
 
 @main
@@ -22,6 +26,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // state
 
     var reminderWindow: ReminderPanel! // window for reminder
+    var settingsWindow: SettingsWindow! // window for settings
     var statusItem: NSStatusItem! // space in sattus bar
     var statusMenu: NSMenu! // dropdown menu
     var menuButton: NSStatusBarButton! // button in space in status bar
@@ -117,11 +122,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         uiVisibleState.remindersSinceSleep = 0
 
         if (areRemindersEnabled()) {
-            if (true) { // TODO if ResetOnWake setting true
+            if (uiVisibleState.resetTimerOnWake) {
                 scheduleShowReminder()
             }
         } else {
-            if (true) { // TODO if EnableOnWake setting true
+            if (uiVisibleState.enableRemindersOnWake) {
                 enableReminders()
             }
         }
@@ -154,14 +159,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menuButton.action = #selector(statusBarButtonClick(_:))
         menuButton.sendAction(on: [.leftMouseUp, .rightMouseUp])
 
+        reminderWindow = ReminderPanel(state: uiVisibleState, callback: userClosedReminder)
+        settingsWindow = SettingsWindow(state: uiVisibleState)
+
         countdownMenuItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         statusMenu.addItem(countdownMenuItem)
         statusMenu.addItem(NSMenuItem.separator())
         statusMenu.addItem(NSMenuItem(title: "About", action: #selector(showAboutPanel(_:)), keyEquivalent: ""))
         statusMenu.addItem(NSMenuItem.separator())
+        statusMenu.addItem(NSMenuItem(title: "Settings", action: #selector(showSettingsWindow(_:)), keyEquivalent: ""))
+        statusMenu.addItem(NSMenuItem.separator())
         statusMenu.addItem(NSMenuItem(title: "Quit", action: #selector(quit(_:)), keyEquivalent: ""))
-
-        reminderWindow = ReminderPanel(state: uiVisibleState, callback: userClosedReminder)
 
         print("inited \(Date())")
 
@@ -227,5 +235,171 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.orderFrontStandardAboutPanel(options: [ .credits : credits ])
     }
 
+    @objc func showSettingsWindow(_ sender: Any) {
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow.makeKeyAndOrderFront(nil)
+    }
 }
 
+class SettingsWindow: NSWindow, NSWindowDelegate {
+    @ObservedObject var state: UIVisisbleState
+
+    private let width: CGFloat = 450
+    private let height: CGFloat = 250
+    private let settingsView: SettingsView
+
+    // SwiftUI to render settings
+    struct SettingsView: View {
+        @ObservedObject var state: UIVisisbleState
+
+        init(state: UIVisisbleState) {
+            self.state = state
+            state.userInputtedReminderIntervalSeconds = state.reminderIntervalSeconds
+        }
+
+        var body: some View {
+
+            VStack(alignment: .leading) {
+                HStack {
+                    Text("Number of seconds between reminders")
+                    TextField("", value: $state.userInputtedReminderIntervalSeconds, formatter: NumberFormatter())
+                        // don't allow the inputted interval to be non-positive
+                        .onChange(of: state.userInputtedReminderIntervalSeconds)
+                        { [oldValue = state.userInputtedReminderIntervalSeconds] newValue  in
+                            if (newValue <= 0) {
+                                self.state.userInputtedReminderIntervalSeconds = oldValue
+                            }
+                        }
+                }
+                HStack {
+                    Text("Reminder messsage")
+                    TextField("", text: $state.reminderMessage)
+                }
+                HStack {
+                    Text("Enable reminders on wake")
+                    Toggle("", isOn: $state.enableRemindersOnWake).labelsHidden()
+                }
+                HStack {
+                    Text("Reset reminder timer on wake")
+                    Toggle("", isOn: $state.resetTimerOnWake).labelsHidden()
+                }
+                Text("Reminders since computer last woke from sleep: \(state.remindersSinceSleep)")
+                HStack {
+                    Text("Reminders since last reset: \(state.remindersSinceReset)")
+                    Button("Reset", action: { state.remindersSinceReset = 0 })
+                }
+
+
+            }.padding(30)
+        }
+    }
+
+    // when the window is about to close and the user changed the interval start the timer using the new interval
+    func windowWillClose(_ notification: Notification) {
+        if state.userInputtedReminderIntervalSeconds != state.reminderIntervalSeconds && state.userInputtedReminderIntervalSeconds > 0 {
+            print("user changed reminder interval to \(state.userInputtedReminderIntervalSeconds) \(Date())")
+            state.reminderIntervalSeconds = state.userInputtedReminderIntervalSeconds
+            let delegate = (NSApplication.shared.delegate as! AppDelegate)
+            if (delegate.areRemindersEnabled())  {
+                delegate.scheduleShowReminder()
+            }
+        }
+    }
+
+    init(state: UIVisisbleState) {
+        self.state = state
+        self.settingsView = SettingsView(state: state)
+        super.init(contentRect: NSRect(x: 0, y: 0, width: width, height: height), styleMask: [ .titled, .closable ], backing: .buffered, defer: false)
+        level = .floating
+        title = "Remindful Settings"
+        isReleasedWhenClosed = false
+        contentView? = NSHostingView(rootView: self.settingsView.frame(width: width, height: height))
+        self.delegate = self
+        self.center()
+    }
+}
+
+// reminder panel that will go over every other window and remain the key window while it is open;
+// calls the passed-in callback on mouse click or any keypress
+class ReminderPanel: NSPanel, NSWindowDelegate {
+    @ObservedObject var state: UIVisisbleState
+    var callback: (() -> Void)
+
+    private var shouldRemainKey = false
+
+    init(state: UIVisisbleState, callback: @escaping (() -> Void)) {
+        self.state = state
+        self.callback = callback
+
+        super.init(contentRect: NSRect(x: 0, y: 0, width: NSScreen.main!.frame.width, height: NSScreen.main!.frame.height), // make fullscreen
+                   styleMask: [ .borderless, // don't display peripheral elements
+                                .nonactivatingPanel ], // fixes some UI flicker when changing spaces
+                   backing: .buffered, // render drawing into a display buffer
+                   defer: false) // create window device immediately
+        level = .mainMenu // display on top of other windows
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary] // show in all spaces and over fullscreen apps
+        backgroundColor = NSColor(red: 0, green: 0, blue: 0, alpha: 0.85) // translucent
+        contentView? = NSHostingView(rootView: ReminderPanelView(state: state).contentShape(Rectangle())) // contentShape needed to make clicking work everywhere
+
+        delegate = self
+    }
+
+    // SwiftUI to render text
+    struct ReminderPanelView: View {
+        @ObservedObject var state: UIVisisbleState
+
+        var body: some View {
+            Text("\(state.reminderMessage)\n\n\(state.remindersSinceSleep) reminders since last sleep\n\(state.remindersSinceReset) reminders since last reset\n\npress any key or click to exit").font(.system(.largeTitle, design: .monospaced)).foregroundColor(.white).multilineTextAlignment(.center).frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    // panels can't be these things by default, need to override them
+    public override var acceptsFirstResponder: Bool {
+        get { return true }
+    }
+    public override var canBecomeKey: Bool {
+        get { return true }
+    }
+    public override var canBecomeMain: Bool {
+        get { return true }
+    }
+
+    public override func keyDown(with event: NSEvent) {
+           callback()
+    }
+
+    public override func mouseDown(with event: NSEvent) {
+        callback()
+    }
+
+    func displayReminder(callback: @escaping (() -> Void)) {
+        shouldRemainKey = true
+
+        alphaValue = 0
+        NSApp.activate(ignoringOtherApps: true)
+        makeKeyAndOrderFront(nil)
+        NSAnimationContext.runAnimationGroup({ (context) -> Void in
+            context.duration = 0.99
+            animator().alphaValue = 1
+        }, completionHandler: callback)
+    }
+
+    func closeReminder() {
+        shouldRemainKey = false
+
+        NSAnimationContext.runAnimationGroup({ (context) -> Void in
+            context.duration = 0.99
+            animator().alphaValue = 0
+        }, completionHandler: {
+            NSApp.hide(nil) // restore focus to previous app
+            self.close()
+        })
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        if (shouldRemainKey) {
+            NSApp.activate(ignoringOtherApps: true)
+            makeKeyAndOrderFront(nil)
+        }
+    }
+}
