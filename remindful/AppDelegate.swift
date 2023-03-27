@@ -46,6 +46,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // helpers
 
+    func enableTimer() {
+        if (secondsTimer == nil) {
+            secondsTimer = Timer.scheduledTimer(timeInterval: 1,
+                                                target: self,
+                                                selector: #selector(secondsTick),
+                                                userInfo: nil,
+                                                repeats: true)
+            RunLoop.current.add(secondsTimer, forMode: RunLoop.Mode.common)
+        }
+    }
+
+    func disableTimer() {
+        if (secondsTimer != nil) {
+            secondsTimer.invalidate()
+            secondsTimer = nil
+        }
+    }
+
     func areRemindersEnabled() -> Bool {
         return secondsUntilReminder != -1
     }
@@ -77,6 +95,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func enableReminders() {
         print("enableReminders \(Date())")
+        enableTimer()
         scheduleShowReminder()
         menuButton.image = NSImage(named: "open")
     }
@@ -88,6 +107,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             hideReminder()
         }
         secondsUntilReminder = -1
+        disableTimer()
 
         countdownMenuItem.title = "Reminders disabled"
         menuButton.image = NSImage(named: "closed")
@@ -121,6 +141,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         uiVisibleState.remindersSinceSleep = 0
 
+        enableTimer()
+
         if (areRemindersEnabled()) {
             if (uiVisibleState.resetTimerOnWake) {
                 scheduleShowReminder()
@@ -137,6 +159,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         savedSecondsUntilReminder = secondsUntilReminder
         secondsUntilReminder = -1
+        disableTimer()
     }
 
     @objc func userClosedReminder() {
@@ -172,14 +195,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusMenu.addItem(NSMenuItem(title: "Quit", action: #selector(quit(_:)), keyEquivalent: ""))
 
         print("inited \(Date())")
-
-        // TODO may be nice to invalidate the timer when reminders are disabled or machine is asleep
-        secondsTimer = Timer.scheduledTimer(timeInterval: 1,
-                                            target: self,
-                                            selector: #selector(secondsTick),
-                                            userInfo: nil,
-                                            repeats: true)
-        RunLoop.current.add(secondsTimer, forMode: RunLoop.Mode.common)
 
         NSWorkspace.shared.notificationCenter.addObserver(
                 self, selector: #selector(wakeFromSleep(note:)),
