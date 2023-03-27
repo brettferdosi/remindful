@@ -68,6 +68,7 @@
 				8B2A6423297708380067EC3C /* Sources */,
 				8B2A6424297708380067EC3C /* Frameworks */,
 				8B2A6425297708380067EC3C /* Resources */,
+				8B3323D129D133DB0040DBC7 /* Set Build Version and Number */,
 			);
 			buildRules = (
 			);
@@ -122,6 +123,30 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		8B3323D129D133DB0040DBC7 /* Set Build Version and Number */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)",
+				"$(INSTALL_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "Set Build Version and Number";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "BUILD_NUMBER=$(git rev-list HEAD --count)\nBUILD_VERSION=$(git describe --tags --always --dirty)\nPLIST=\"\"\n\n# handle archiving\nif [ \"${ACTION}\" == \"install\" ]; then\n    PLIST=\"${INSTALL_DIR}/${INFOPLIST_PATH}\"\nelse\n    PLIST=\"${BUILT_PRODUCTS_DIR}/${INFOPLIST_PATH}\"\nfi\n\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $BUILD_NUMBER\" \"${PLIST}\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleShortVersionString ${BUILD_VERSION#*v}\" \"${PLIST}\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		8B2A6423297708380067EC3C /* Sources */ = {
@@ -264,6 +289,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = remindful/remindful.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -292,6 +318,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = remindful/remindful.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
