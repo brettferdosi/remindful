@@ -78,7 +78,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func enableReminders() {
         print("enableReminders \(Date())")
         scheduleShowReminder()
-        menuButton.image = NSImage.init(systemSymbolName: "ellipsis.circle.fill", accessibilityDescription: nil ) // TODO fix
+        menuButton.image = NSImage(named: "open")
     }
 
     @objc func disableReminders() {
@@ -90,7 +90,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         secondsUntilReminder = -1
 
         countdownMenuItem.title = "Reminders disabled"
-        menuButton.image = NSImage.init(systemSymbolName: "ellipsis.circle", accessibilityDescription: nil ) // TODO fix
+        menuButton.image = NSImage(named: "closed")
     }
 
     @objc func toggleReminders() {
@@ -211,7 +211,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.terminate(self)
     }
 
-    // TODO fix logo
     @objc func showAboutPanel(_ sender: Any) {
         let github = NSMutableAttributedString(string: "https://github.com/brettferdosi/remindful")
         github.addAttribute(.link, value: "https://github.com/brettferdosi/remindful",
