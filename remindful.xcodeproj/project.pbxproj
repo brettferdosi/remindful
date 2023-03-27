@@ -10,6 +10,7 @@
 		8B2A642B297708380067EC3C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B2A642A297708380067EC3C /* AppDelegate.swift */; };
 		8B2A642D297708390067EC3C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8B2A642C297708390067EC3C /* Assets.xcassets */; };
 		8B2A6430297708390067EC3C /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 8B2A642E297708390067EC3C /* MainMenu.xib */; };
+		8B3323D329D230090040DBC7 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 8B3323D229D230090040DBC7 /* README.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,6 +19,7 @@
 		8B2A642C297708390067EC3C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8B2A642F297708390067EC3C /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		8B2A6431297708390067EC3C /* remindful.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = remindful.entitlements; sourceTree = "<group>"; };
+		8B3323D229D230090040DBC7 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -34,6 +36,7 @@
 		8B2A641E297708380067EC3C = {
 			isa = PBXGroup;
 			children = (
+				8B3323D229D230090040DBC7 /* README.md */,
 				8B2A6429297708380067EC3C /* remindful */,
 				8B2A6428297708380067EC3C /* Products */,
 			);
@@ -117,6 +120,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8B3323D329D230090040DBC7 /* README.md in Resources */,
 				8B2A642D297708390067EC3C /* Assets.xcassets in Resources */,
 				8B2A6430297708390067EC3C /* MainMenu.xib in Resources */,
 			);
