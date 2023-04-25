@@ -42,7 +42,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var secondsTimer: Timer!
     var secondsUntilReminder = -1 // -1 when disabled, 0 when reminder shown, positive when counting down
     var savedSecondsUntilReminder = -1 // to stop countdowns while the machine is sleeping
-    var canUserCloseReminder = false // flag to delay reminder close until after it fades in
 
     // helpers
 
@@ -82,9 +81,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         uiVisibleState.remindersSinceReset += 1
         uiVisibleState.remindersSinceSleep += 1
 
-        reminderWindow.displayReminder(callback: {
-            self.canUserCloseReminder = true
-        })
+        reminderWindow.displayReminder()
     }
 
     @objc func hideReminder() {
@@ -165,11 +162,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func userClosedReminder() {
         print("userClosedReminder \(Date())")
 
-        if (canUserCloseReminder) {
-            canUserCloseReminder = false
-            hideReminder()
-            scheduleShowReminder()
-        }
+        hideReminder()
+        scheduleShowReminder()
     }
 
     // menu bar UI
@@ -337,9 +331,9 @@ class SettingsWindow: NSWindow, NSWindowDelegate {
 // calls the passed-in callback on mouse click or any keypress
 class ReminderPanel: NSPanel, NSWindowDelegate {
     @ObservedObject var state: UIVisisbleState
-    var callback: (() -> Void)
-
-    private var shouldRemainKey = false
+    var callback: (() -> Void) // to be called when reminder closes
+    private var shouldRemainKey = false // if something else becomes key, should we take it back?
+    private var canCloseReminder = false // has the reminder been animated in long enough to close it?
 
     init(state: UIVisisbleState, callback: @escaping (() -> Void)) {
         self.state = state
@@ -379,14 +373,18 @@ class ReminderPanel: NSPanel, NSWindowDelegate {
     }
 
     public override func keyDown(with event: NSEvent) {
-           callback()
+        if (self.canCloseReminder) {
+            callback()
+        }
     }
 
     public override func mouseDown(with event: NSEvent) {
-        callback()
+        if (self.canCloseReminder) {
+            callback()
+        }
     }
 
-    func displayReminder(callback: @escaping (() -> Void)) {
+    func displayReminder() {
         shouldRemainKey = true
 
         alphaValue = 0
@@ -395,11 +393,12 @@ class ReminderPanel: NSPanel, NSWindowDelegate {
         NSAnimationContext.runAnimationGroup({ (context) -> Void in
             context.duration = 0.99
             animator().alphaValue = 1
-        }, completionHandler: callback)
+        }, completionHandler: { self.canCloseReminder = true })
     }
 
     func closeReminder() {
         shouldRemainKey = false
+        canCloseReminder = false
 
         NSAnimationContext.runAnimationGroup({ (context) -> Void in
             context.duration = 0.99
