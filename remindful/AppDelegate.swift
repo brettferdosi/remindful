@@ -25,7 +25,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // state
 
-    var reminderWindow: ReminderPanel! // window for reminder
+    var reminderWindows: [ReminderPanel]! = [] // windows for reminder
     var settingsWindow: SettingsWindow! // window for settings
     var statusItem: NSStatusItem! // space in sattus bar
     var statusMenu: NSMenu! // dropdown menu
@@ -81,13 +81,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         uiVisibleState.remindersSinceReset += 1
         uiVisibleState.remindersSinceSleep += 1
 
-        reminderWindow.displayReminder()
+        let screens = NSScreen.screens
+        reminderWindows = screens.map({(screen: NSScreen) -> ReminderPanel in ReminderPanel(state: uiVisibleState, callback: userClosedReminder, displayScreen: screen)})
+        for reminderWindow in reminderWindows {
+            reminderWindow.displayReminder()
+        }
     }
 
     @objc func hideReminder() {
         print("hideReminder \(Date())")
 
-        reminderWindow.closeReminder()
+        for reminderWindow in reminderWindows {
+            reminderWindow.closeReminder()
+        }
     }
 
     @objc func enableReminders() {
@@ -176,7 +182,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menuButton.action = #selector(statusBarButtonClick(_:))
         menuButton.sendAction(on: [.leftMouseUp, .rightMouseUp])
 
-        reminderWindow = ReminderPanel(state: uiVisibleState, callback: userClosedReminder)
         settingsWindow = SettingsWindow(state: uiVisibleState)
 
         countdownMenuItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -334,12 +339,14 @@ class ReminderPanel: NSPanel, NSWindowDelegate {
     var callback: (() -> Void) // to be called when reminder closes
     private var shouldRemainKey = false // if something else becomes key, should we take it back?
     private var canCloseReminder = false // has the reminder been animated in long enough to close it?
+    private var displayScreen: NSScreen! // screen to display on
 
-    init(state: UIVisisbleState, callback: @escaping (() -> Void)) {
+    init(state: UIVisisbleState, callback: @escaping (() -> Void), displayScreen: NSScreen) {
         self.state = state
         self.callback = callback
+        self.displayScreen = displayScreen
 
-        super.init(contentRect: NSRect(x: 0, y: 0, width: NSScreen.main!.frame.width, height: NSScreen.main!.frame.height), // make fullscreen
+        super.init(contentRect: NSRect(x: displayScreen.frame.minX, y: displayScreen.frame.minY, width: displayScreen.frame.width, height: displayScreen.frame.height), // make fullscreen
                    styleMask: [ .borderless, // don't display peripheral elements
                                 .nonactivatingPanel ], // fixes some UI flicker when changing spaces
                    backing: .buffered, // render drawing into a display buffer
